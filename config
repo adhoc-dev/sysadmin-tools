@@ -1,0 +1,70 @@
+# Configuración archivos host, ssh, cfg
+# ~/.ssh/config
+
+Host ad-nfs
+  HostName 35.247.212.241
+  User dib
+  IdentityFile ~/.ssh/google_compute_engine
+
+Host ad-node3
+  HostName 35.199.85.252
+  user dib
+  IdentityFile ~/.ssh/google_compute_engine
+
+Host ad-node4
+  HostName 35.247.200.42
+  User dib
+  IdentityFile ~/.ssh/google_compute_engine
+
+Host ad-node5
+  HostName 35.198.54.94
+  User dib
+  IdentityFile ~/.ssh/google_compute_engine
+
+Host ad-node6
+  HostName 35.247.254.4
+  User dib
+  IdentityFile ~/.ssh/google_compute_engine
+
+Host ad-node7
+  HostName 34.95.213.184
+  User dib
+  IdentityFile ~/.ssh/google_compute_engine
+
+
+Host ad-node12
+  HostName 35.198.32.5
+  User dib
+  IdentityFile ~/.ssh/google_compute_engine
+
+Host ad-node11
+  HostName 34.95.165.197
+  User dib
+  IdentityFile ~/.ssh/google_compute_engine
+
+Host ad-db
+  HostName 35.198.54.75
+  User dib
+  IdentityFile ~/.ssh/google_compute_engine
+#  LocalForward 5433 postgres.adhoc-pg-nubeadhoc-2:5432
+#  LocalForward 5433 postgres.adhoc-pg12-nubeadhoc:5434
+# Nube-pg12-nubeadhoc
+#  LocalForward 5433 localhost:5434
+#  LocalForward 5433 localhost:5435
+
+Host ad-nfs
+  HostName 35.247.212.241
+  User dib
+  IdentityFile ~/.ssh/google_compute_engine
+
+#Host ad-bastion
+#  HostName 34.95.211.202
+#  User adhoc
+#  IdentityFile ~/.ssh/adhoc2
+
+Host ad-runbot
+  HostName usloft6448.startdedicated.com
+  User sysadmin
+  Port 12022
+  IdentityFile ~/.ssh/id_rsaAdhoc
+#  ProxyCommand ssh -q -W %h:%p ad-bastion
