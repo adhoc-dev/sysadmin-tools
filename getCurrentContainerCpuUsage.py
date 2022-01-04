@@ -6,6 +6,7 @@ from datetime import datetime
 
 
 contenedores = [
+    'ad-node3',
     'ad-node4',
     'ad-node5',
     'ad-node6',
@@ -13,7 +14,7 @@ contenedores = [
     'ad-node11',
     'ad-node12',
     'ad-db'
-    ]
+]
 
 
 def getCurrentCpuUsage(containerName: str):

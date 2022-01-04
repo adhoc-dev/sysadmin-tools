@@ -5,18 +5,18 @@ import re
 import sqlite3
 from datetime import datetime
 
-
 contenedores = [
-    'adhoc-pg-demo/postgres',
-    'adhoc-pg-boggio/postgres',
+    # Dimos de baja el stack 'adhoc-pg-demo/postgres',
+    # Migramos boggio a v13 (adhoc-pg12-nubeadhoc)
+    # adhoc-pg-boggio/postgres,
+    'adhoc-pg12-nubeadhoc/postgres',
     'adhoc-pg-nubeadhoc-2/postgres',
     'adhoc-pg12-demo/postgres',
-    'adhoc-pg12-nubeadhoc/postgres'
-    ]
+]
 
 
 def getCurrentCpuUsage(containerName: str):
-    print('Cheking process on', containerName)
+    print('Checking process on', containerName)
     p = subprocess.Popen('rancher1 exec -it %s /bin/bash -c \
         "ps --sort=-pcpu -Ao pcpu,pmem,args"' % containerName,
                          stdout=subprocess.PIPE,
@@ -30,7 +30,7 @@ def getCurrentCpuUsage(containerName: str):
             line = line.decode().strip()
             # Eliminamos el final de la linea con informacion relativa a la conexion
             line = re.sub(r'(([0-9]{1,3}\.){3}.*)', ' ', line).strip()
-            # Buscamos los CPU y MEM ( proc postgress)
+            # Buscamos los CPU y MEM ( proc postgres)
             ps = re.findall(r'([0-9]{1,2}\.+[0-9]{1,2})|(postgres: .*)',
                             line, flags=re.IGNORECASE)
             if len(ps) != 3:
@@ -102,7 +102,7 @@ def installps(containerName):
 checkDB()
 currentDate = datetime.now()
 for contenedor in contenedores:
-    # installps(contenedor)
+    # Verificar si corresponde o no volver a llamar esta función para instalar ps
+    installps(contenedor)
     ps = getCurrentCpuUsage(contenedor)
     save(contenedor, ps, currentDate)
-
