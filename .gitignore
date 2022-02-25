@@ -1,6 +1,6 @@
 # Ignores Diego
 proc.sqlite
-ssh_config
+.ssh_config
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
