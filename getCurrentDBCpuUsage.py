@@ -7,8 +7,7 @@ from datetime import datetime
 
 contenedores = [
     # Dimos de baja el stack 'adhoc-pg-demo/postgres',
-    # Migramos boggio a v13 (adhoc-pg12-nubeadhoc)
-    # adhoc-pg-boggio/postgres,
+    'adhoc-pg12-boggio/postgres',
     'adhoc-pg12-nubeadhoc/postgres',
     'adhoc-pg-nubeadhoc-2/postgres',
     'adhoc-pg12-demo/postgres',
