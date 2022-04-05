@@ -10,6 +10,7 @@ r2_help () {
     echo "connect: Acceder con bash a una base agregando el nombre del deploy / pod. Uso: r2 connect test-adhoc-31-12-1"
     echo "logs: Para ver los logs activos de una base. Uso: r2 logs test-adhoc-31-12-1"
     echo "describe: Muestra detalles de un recurso o grupo. Uso: r2 describe cotesma"
+    echo "gcp: Devuelve la URL para acceder a la consola > Pod (métricas, logs). Uso: r2 gcp symmetria"
 }
 
 r2_connect () {
@@ -24,15 +25,22 @@ r2_describe () {
     rancher2 kubectl describe -n $1 deploy/$1-adhoc-odoo
 }
 
+r2_gcp () {
+    echo https://console.cloud.google.com/kubernetes/deployment/us-east1-b/adhocprod/$1/$1-adhoc-odoo/overview?project=nubeadhoc
+}
+
 case $1 in
   connect)
     r2_connect $2
     ;;
-    logs)
+  logs)
     r2_logs $2
     ;;
-    describe)
+  describe)
     r2_describe $2
+    ;;
+  gcp)
+    r2_gcp $2
     ;;
   *)
     r2_help
