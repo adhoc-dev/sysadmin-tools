@@ -2,6 +2,7 @@
 #
 # Script automágico para trabajar con la nueva infraestructura (Rancher2.x + Kubernetes en GCP)
 # Inspirado en código de https://github.com/azacchino
+# Repositorio: https://github.com/adhoc-dev/sysadmin-tools/blob/main/rke_byadhoc.sh
 
 r2_help () {
     echo "R2, el nuevo comando para trabajar con Rancher2 y Kubernetes by Adhoc! 🚀"
@@ -19,7 +20,7 @@ r2_connect () {
 }
 
 r2_logs () {
-    rancher2 kubectl logs -f -n $1 deploy/$1-adhoc-odoo
+    rancher2 kubectl -n $1 logs -f -n $1 --selector app.kubernetes.io/instance=$1
 }
 
 r2_describe () {
