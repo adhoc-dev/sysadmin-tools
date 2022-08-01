@@ -13,7 +13,7 @@ r2_help () {
     echo "describe: Muestra detalles de un recurso o grupo. Uso: r2 describe cotesma"
     echo "gcp: Devuelve la URL para acceder a la consola > Pod (métricas, logs). Uso: r2 gcp symmetria"
     echo "reg: Devuelve la URL para acceder a los logs desde GCP > Logs históricos. Uso: r2 reg perfit"
-    echo "roll: Levanta un nuevo pod. Uso: r2 roll test-demo-retail-22-07-1"
+    echo "redeploy: Cierra y reinicia cada contenedor del pod, no hay downtime ni reinicia valores del workload. Uso: r2 redeploy test-demo-retail-22-07-1"
 }
 
 r2_connect () {
@@ -33,14 +33,14 @@ r2_gcp () {
 }
 
 r2_clean () {
-    kubectl get pods --all-namespaces | grep Shutdown | while read namespace pod rest; do kubectl delete pod $pod -n $namespace; done
+    kubectl get pods --all-namespaces | grep Terminated | while read namespace pod rest; do kubectl delete pod $pod -n $namespace; done
 }
 
 r2_reg () {
     echo "https://console.cloud.google.com/logs/query;query=resource.type%3D%22k8s_container%22%0Aresource.labels.namespace_name%3D%22$1%22?project=nubeadhoc"
 }
 
-r2_roll () {
+r2_redeploy () {
     kubectl rollout restart deployment $1-adhoc-odoo -n $1
 }
 
@@ -63,8 +63,8 @@ case $1 in
   reg)
     r2_reg $2
     ;;
-  roll)
-    r2_roll $2
+  redeploy)
+    r2_redeploy $2
     ;;
   *)
     r2_help
