@@ -12,7 +12,8 @@ r2_help () {
     echo "logs: Para ver los logs activos de una base. Uso: r2 logs test-adhoc-31-12-1"
     echo "describe: Muestra detalles de un recurso o grupo. Uso: r2 describe cotesma"
     echo "gcp: Devuelve la URL para acceder a la consola > Pod (métricas, logs). Uso: r2 gcp symmetria"
-    echo "reg: Devuelve la URL para acceder a la consola > Logs históricos. Uso: r2 reg perfit"
+    echo "reg: Devuelve la URL para acceder a los logs desde GCP > Logs históricos. Uso: r2 reg perfit"
+    echo "roll: Levanta un nuevo pod. Uso: r2 roll test-demo-retail-22-07-1"
 }
 
 r2_connect () {
@@ -39,6 +40,10 @@ r2_reg () {
     echo "https://console.cloud.google.com/logs/query;query=resource.type%3D%22k8s_container%22%0Aresource.labels.namespace_name%3D%22$1%22?project=nubeadhoc"
 }
 
+r2_roll () {
+    kubectl rollout restart deployment $1-adhoc-odoo -n $1
+}
+
 case $1 in
   connect)
     r2_connect $2
@@ -57,6 +62,9 @@ case $1 in
     ;;
   reg)
     r2_reg $2
+    ;;
+  roll)
+    r2_roll $2
     ;;
   *)
     r2_help
