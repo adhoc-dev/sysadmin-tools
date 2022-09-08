@@ -1,0 +1,8 @@
+spec:
+  template:
+    spec:
+      containers:
+        - name: adhoc-odoo
+          args: [/bin/sh, -c, sleep infinity]
+          livenessProbe:
+          readinessProbe:
