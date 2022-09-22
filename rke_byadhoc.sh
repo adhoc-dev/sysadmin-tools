@@ -19,7 +19,7 @@ r2_help () {
     echo "- gcp: URL para acceder al workload desde la consola de GCP (DevOps). Uso: $ r2 gcp symmetria"
     echo "- reg: URL para acceder a los logs históricos desde GCP. Uso: $ r2 reg perfit"
     echo "- redeploy: Apaga y reinicia cada contenedor del deployment, no hay downtime ni reinicia valores del workload (rolling restart). Uso: $ r2 redeploy test-demo-retail-22-07-1"
-    echo "- sleep: Patchea el workload aplicando el comando sleep infinity y desactivando healthchecks. Uso: $ r2 sleep test-tux-solutions-30-08-1 (ver $ r2 rollback)"
+    echo "- sleep: Patchea el workload aplicando el comando sleep infinity y desactivando healthchecks. Uso: $ r2 sleep test-tux-solutions-30-08-1 (ver $ r2 undo)"
     echo "- undo: roll back a versión anterior del deployment. Uso: $ r2 undo test-base-01-09-1" 
 }
 
