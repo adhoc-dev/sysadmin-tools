@@ -62,7 +62,7 @@ echo -e "
 apt-get upgrade -y | tee -a /tmp/update-output.txt
 apt-get install unattended-upgrades -y | tee -a /tmp/update-output.txt
 snap refresh | tee -a /tmp/update-output.txt
-
+apt-get install screenfetch -y
 
 # Limpieza de caché, repositorios, paquetes
 
@@ -109,7 +109,7 @@ fi
 # Información a recolectar de los equipos
 
 screenfetch -n | egrep 'OS:|Disk:|CPU:|RAM:'
-upower -i /org/freedesktop/UPower/devices/battery_BAT0 | grep capacity
+echo "Battery" && upower -i /org/freedesktop/UPower/devices/battery_BAT0 | grep capacity
 echo "Battery" && upower -i /org/freedesktop/UPower/devices/battery_BAT1 | grep capacity
 
 
