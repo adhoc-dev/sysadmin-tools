@@ -63,6 +63,7 @@ apt-get upgrade -y | tee -a /tmp/update-output.txt
 apt-get install unattended-upgrades -y | tee -a /tmp/update-output.txt
 snap refresh | tee -a /tmp/update-output.txt
 apt-get install screenfetch -y
+apt-get install dmidecode -y
 
 # Limpieza de caché, repositorios, paquetes
 
@@ -100,14 +101,16 @@ then
   echo -e "
 \e[32m#######################################
 #     POR FAVOR COPIAR Y RESPONDER    #
-#     CON EL SIGUIENTE TEXTO...       #
+#     LA SIGUIENTE INFORMACIÓN...     #
 #     ¡GRACIAS!                       #
 #######################################\e[0m
 "
 fi
 
+
 # Información a recolectar de los equipos
 
+dmidecode -t system | grep Serial
 screenfetch -n | egrep 'OS:|Disk:|CPU:|RAM:'
 echo "Battery" && upower -i /org/freedesktop/UPower/devices/battery_BAT0 | grep capacity
 echo "Battery" && upower -i /org/freedesktop/UPower/devices/battery_BAT1 | grep capacity
