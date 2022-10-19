@@ -4,23 +4,20 @@
 # Inspirado en código de https://github.com/azacchino
 # Repositorio: https://github.com/adhoc-dev/sysadmin-tools/blob/main/rke_byadhoc.sh
 
-## TO-DO / CHEATSHEET
-# kubectl scale deployment/my-nginx --replicas=1
-# kubectl rollout pause deployment.v1.apps/nginx-deployment
-
 r2_help () {
     echo "R2, el nuevo comando para trabajar con Rancher2 y Kubernetes by Adhoc! 🚀"
     echo "====================="
     echo "🤖 Lista de comandos:"
     echo "====================="
     echo "- connect: Acceder con bash a una base. Uso: $ r2 connect test-adhoc-31-12-1"
-    echo "- logs: Para ver los logs activos de una base. Uso: $ r2 logs test-adhoc-31-12-1"
     echo "- describe: Muestra detalles de un recurso o grupo. Uso: $ r2 describe cotesma"
     echo "- gcp: URL para acceder al workload desde la consola de GCP (DevOps). Uso: $ r2 gcp symmetria"
-    echo "- reg: URL para acceder a los logs históricos desde GCP. Uso: $ r2 reg perfit"
+    echo "- logs: Para ver los logs activos de una base. Uso: $ r2 logs test-adhoc-31-12-1"
     echo "- redeploy: Apaga y reinicia cada contenedor del deployment, no hay downtime ni reinicia valores del workload (rolling restart). Uso: $ r2 redeploy test-demo-retail-22-07-1"
+    echo "- reg: URL para acceder a los logs históricos desde GCP. Uso: $ r2 reg perfit"
+    echo "- scale: para modificar el scale de un deploy (más / menos pods, para hacer odoo-fix, etc.). Uso: $ r2 scale test-base-01-09-1 3"
     echo "- sleep: Patchea el workload aplicando el comando sleep infinity y desactivando healthchecks. Uso: $ r2 sleep test-tux-solutions-30-08-1 (ver $ r2 undo)"
-    echo "- undo: roll back a versión anterior del deployment. Uso: $ r2 undo test-base-01-09-1" 
+    echo "- undo: roll back a versión anterior del deployment. Uso: $ r2 undo test-base-01-09-1"
 }
 
 r2_connect () {
@@ -60,6 +57,10 @@ r2_gcp () {
     echo https://console.cloud.google.com/kubernetes/deployment/us-east1-b/adhocprod/$1/$1-adhoc-odoo/overview?project=nubeadhoc
 }
 
+r2_scale () {
+    kubectl scale deployment/$1-adhoc-odoo -n $1 --replicas=$2
+}
+
 case $1 in
   connect)
     r2_connect $2
@@ -87,6 +88,9 @@ case $1 in
     ;;
   undo)
     r2_undo $2
+    ;;
+  scale)
+    r2_scale $2 $3
     ;;
   *)
     r2_help
