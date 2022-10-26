@@ -9,15 +9,15 @@ r2_help () {
     echo "====================="
     echo "🤖 Lista de comandos:"
     echo "====================="
-    echo "- connect: Acceder con bash a una base. Uso: $ r2 connect test-adhoc-31-12-1"
-    echo "- describe: Muestra detalles de un recurso o grupo. Uso: $ r2 describe cotesma"
-    echo "- gcp: URL para acceder al workload desde la consola de GCP (DevOps). Uso: $ r2 gcp symmetria"
-    echo "- logs: Para ver los logs activos de una base. Uso: $ r2 logs test-adhoc-31-12-1"
-    echo "- redeploy: Apaga y reinicia cada contenedor del deployment, no hay downtime ni reinicia valores del workload (rolling restart). Uso: $ r2 redeploy test-demo-retail-22-07-1"
-    echo "- reg: URL para acceder a los logs históricos desde GCP. Uso: $ r2 reg perfit"
-    echo "- scale: para modificar el scale de un deploy (más / menos pods, para hacer odoo-fix, etc.). Uso: $ r2 scale test-base-01-09-1 3"
-    echo "- sleep: Patchea el workload aplicando el comando sleep infinity y desactivando healthchecks. Uso: $ r2 sleep test-tux-solutions-30-08-1 (ver $ r2 undo)"
-    echo "- undo: roll back a versión anterior del deployment. Uso: $ r2 undo test-base-01-09-1"
+    echo "- CONNECT: Acceder con bash a una base. Uso: $ r2 connect test-adhoc-31-12-1"
+    echo "- DESCRIBE: Muestra detalles de un recurso o grupo. Uso: $ r2 describe cotesma"
+    echo "- GCP: URL para acceder al workload desde la consola de GCP (DevOps). Uso: $ r2 gcp symmetria"
+    echo "- LOGS: Para ver los logs activos de una base (admite parámetros, ver $ kubectl logs --help). Uso: $ r2 logs adhoc [--tail=50] [--follow]"
+    echo "- REDEPLOY: Apaga y reinicia cada contenedor del deployment, no hay downtime ni reinicia valores del workload (rolling restart). Uso: $ r2 redeploy test-demo-retail-22-07-1"
+    echo "- REG: URL para acceder a los logs históricos desde GCP. Uso: $ r2 reg perfit"
+    echo "- SCALE: para modificar el scale de un deploy (más / menos pods, para hacer odoo-fix, etc.). Uso: $ r2 scale test-base-01-09-1 3"
+    echo "- SLEEP: Patchea el workload aplicando el comando sleep infinity y desactivando healthchecks.  Uso: $ r2 sleep test-gastrotex-30-08-1 (ver $ r2 undo)"
+    echo "- UNDO: roll back a versión anterior del deployment. Uso: $ r2 undo test-gastrotex-30-08-1"
 }
 
 r2_connect () {
@@ -25,7 +25,9 @@ r2_connect () {
 }
 
 r2_logs () {
-    rancher2 kubectl -n $1 logs -f -n $1 --selector app.kubernetes.io/instance=$1
+    db=$1
+    shift
+    rancher2 kubectl -n $db logs -n $db --selector app.kubernetes.io/instance=$db $@
 }
 
 r2_reg () {
@@ -37,17 +39,16 @@ r2_redeploy () {
 }
 
 r2_sleep () {
-    kubectl patch deployment $1-adhoc-odoo -n $1 --patch "$(cat /home/$USER/.rke_byadhoc-patch_sleep.yml)"
+    kubectl patch deployment $1-adhoc-odoo -n $1 --patch '{"spec": {"template": {"spec": {"containers": [{"name": "adhoc-odoo","args": ["/bin/sh","-c","sleep infinity"],"livenessProbe": null,"readinessProbe": null}]}}}}'
 }
 
 r2_undo () {
     kubectl rollout undo deployment $1-adhoc-odoo -n $1
 }
 
-# DevOps
-r2_clean () {
-    kubectl get pods --all-namespaces | grep Terminated | while read namespace pod rest; do kubectl delete pod $pod -n $namespace; done
-}
+##########
+# DevOps #
+##########
 
 r2_describe () {
     rancher2 kubectl describe -n $1 deploy/$1-adhoc-odoo
@@ -66,16 +67,14 @@ case $1 in
     r2_connect $2
     ;;
   logs)
-    r2_logs $2
+    shift
+    r2_logs $@
     ;;
   describe)
     r2_describe $2
     ;;
   gcp)
     r2_gcp $2
-    ;;
-  clean)
-    r2_clean
     ;;
   reg)
     r2_reg $2
