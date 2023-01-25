@@ -98,6 +98,7 @@ then
 "
 
   rm /tmp/update-output.txt
+  apt-get autoremove
   echo -e "
 \e[32m#######################################
 #     POR FAVOR COPIAR Y RESPONDER    #
