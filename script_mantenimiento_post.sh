@@ -107,5 +107,11 @@ then
 "
 fi
 
+# Evidencias de ejecución de script
+
+echo $(date)
+echo $(whoami)
+echo $(hostname)
+
 
 exit 0
