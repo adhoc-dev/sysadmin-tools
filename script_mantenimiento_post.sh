@@ -109,9 +109,7 @@ fi
 
 # Evidencias de ejecución de script
 
-echo $(date)
-echo $(whoami)
-echo $(hostname)
-
+echo "Fecha" && date
+echo "Host" && hostname
 
 exit 0
