@@ -11,10 +11,10 @@
 ###################################################################################################
 
 # Colores para el texto
-red=$( tput setaf 1 );
-yellow=$( tput setaf 3 );
-green=$( tput setaf 2 );
-normal=$( tput sgr 0 );
+red=$(tput setaf 1)
+yellow=$(tput setaf 3)
+green=$(tput setaf 2)
+normal=$(tput sgr0)
 
 
 # Presentación
@@ -26,17 +26,17 @@ Es un script muy simple para actualizar y limpiar notebooks de Adhoc que usan Ub
 No hay ninguna garantía ni mantenimiento fuera del alcance de Adhoc S.A."
 
 
-# Verificando si se está ejecutando como root
+# Verificar si se está ejecutando como root
 
 if [[ ${UID} != 0 ]]; then
     echo "${red}
-    Este programa se debe ejecutar con poderes, es decir con sudo...
-    Por favor anteponer sudo al comando.${normal}
+    Este programa se debe ejecutar con poderes, es decir, con sudo...
+    Por favor, anteponer sudo al comando.${normal}
     "
     exit 1
 fi
 
-# Mostrando presentación
+# Mostrar presentación
 
 echo "${red}$HEADER${normal}"
 
@@ -76,29 +76,27 @@ apt-get autoclean | tee -a /tmp/update-output.txt
 apt-get autoremove | tee -a /tmp/update-output.txt
 
 
-# Revisando si quedó algún log en el archivo temporal
+# Revisar si quedó algún registro en el archivo temporal
 
-if [ -f "/tmp/update-output.txt"  ]
+if [ -f "/tmp/update-output.txt" ]; then
 
-then
+    # Revisar y mostrar registros que sean relevantes
 
-# Revisando y mostrando logs que sean relevantes
-
-  echo -e "
+    echo -e "
 \e[32m################################################
 #   Mostrando si existen acciones a realizar   #
 ################################################\e[0m
 "
-  egrep -wi --color 'warning|error|critical|reboot|restart|autoclean|autoremove' /tmp/update-output.txt | uniq
-  echo -e "
+    egrep -wi --color 'warning|error|critical|reboot|restart|autoclean|autoremove' /tmp/update-output.txt | uniq
+    echo -e "
 \e[32m#######################################
 #    Limpiando archivos temporales    #
 #######################################\e[0m
 "
 
-  rm /tmp/update-output.txt
-  apt-get autoremove
-  echo -e "
+    rm /tmp/update-output.txt
+    apt-get autoremove
+    echo -e "
 \e[32m#############################################
 #     POR FAVOR HACER CAPTURA DE PANTALLA   #
 #     PARA GUARDAR COMO EVIDENCIA DE LA     #
@@ -107,9 +105,23 @@ then
 "
 fi
 
-# Evidencias de ejecución de script
+# Evidencias de ejecución del script
 
-echo "Fecha" && date
-echo "Host" && hostname
+echo "Fecha: $(date)"
+echo "Host: $(hostname)"
+
+# Saludo Matrix
+echo "
+
+ ██████╗ ██╗   ██╗███████╗     ██████╗██████╗  █████╗  ██████╗██╗  ██╗    ███████╗ ██████╗ ███████╗██╗
+██╔═══██╗██║   ██║██╔════╝    ██╔════╝██╔══██╗██╔══██╗██╔════╝██║ ██╔╝    ██╔════╝██╔═══██╗██╔════╝██║
+██║   ██║██║   ██║█████╗      ██║     ██████╔╝███████║██║     █████╔╝     ███████╗██║   ██║███████╗██║
+██║▄▄ ██║██║   ██║██╔══╝      ██║     ██╔══██╗██╔══██║██║     ██╔═██╗     ╚════██║██║   ██║╚════██║╚═╝
+╚██████╔╝╚██████╔╝███████╗    ╚██████╗██║  ██║██║  ██║╚██████╗██║  ██╗    ███████║╚██████╔╝███████║██╗
+ ╚══▀▀═╝  ╚═════╝ ╚══════╝     ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝    ╚══════╝ ╚═════╝ ╚══════╝╚═╝
+                                                                                                      
+                     
+
+"
 
 exit 0
