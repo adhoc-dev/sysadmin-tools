@@ -63,6 +63,7 @@ apt-get install unattended-upgrades -y | tee -a /tmp/update-output.txt
 snap refresh | tee -a /tmp/update-output.txt
 apt-get install screenfetch -y
 apt-get install dmidecode -y
+apt-get install cowsay -y
 
 # Limpieza de caché, repositorios, paquetes
 
@@ -116,17 +117,7 @@ screenfetch -n | egrep 'OS:|Disk:|CPU:|RAM:'
 echo "Battery" && upower -i /org/freedesktop/UPower/devices/battery_BAT0 | grep capacity
 echo "Battery" && upower -i /org/freedesktop/UPower/devices/battery_BAT1 | grep capacity
 
-# Saludo Matrix
-echo "
- _________________________________________
-/ GRACIAS!!                               \
-\                                         /
- -----------------------------------------
-        \   ^__^
-         \  (oo)\_______
-            (__)\       )\/\
-                ||----w |
-                ||     ||
-"
+# Saludo Cow
+/usr/games/cowsay MUCHAS GRACIAS
 
 exit 0
