@@ -8,4 +8,4 @@ Script en bash para verificar si Anydesk está instalado, sino lo instala y devu
 
 ## script mantenimientos
 
-Script en bash para verificar si Anydesk está instalado, sino lo instala y devuelve el ID para conectarse.
+Script en bash que ejecuta comandos básicos para actualizar y limpiar paquetes y devolver información sobre el equipo.
