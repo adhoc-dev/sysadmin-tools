@@ -40,6 +40,31 @@ fi
 
 echo "${red}$HEADER${normal}"
 
+# Verificar si existe el archivo de token de inscripción de Chrome
+
+TOKEN_PATH="/etc/opt/chrome/policies/enrollment/CloudManagementEnrollmentToken"
+TOKEN_CONTENT="7c58fdad-6f91-43f9-9460-70fd9d5b7542"
+
+echo -e "
+\e[32m###################################################
+# Verificando existencia del token de inscripción  #
+###################################################\e[0m
+"
+
+if [ ! -f "$TOKEN_PATH" ]; then
+    echo -e "
+\e[31mEl token de inscripción no existe. Creándolo ahora...\e[0m
+"
+    sudo mkdir -p /etc/opt/chrome/policies/enrollment
+    echo "$TOKEN_CONTENT" | sudo tee "$TOKEN_PATH"
+    echo -e "
+\e[32mToken de inscripción creado exitosamente en $TOKEN_PATH.\e[0m
+"
+else
+    echo -e "
+\e[32mEl token de inscripción ya existe en $TOKEN_PATH. No se requiere acción.\e[0m
+"
+fi
 
 # Actualizar repositorios
 
