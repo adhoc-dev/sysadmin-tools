@@ -10,23 +10,43 @@ is_anydesk_installed() {
     fi
 }
 
-# Función para instalar AnyDesk
-install_anydesk() {
-    echo "Instalando AnyDesk..."
+# Función para agregar la clave GPG del repositorio
+add_anydesk_key() {
+    if [ ! -f /etc/apt/trusted.gpg.d/anydesk.gpg ]; then
+        wget -qO - https://keys.anydesk.com/repos/DEB-GPG-KEY | sudo tee /etc/apt/trusted.gpg.d/anydesk.gpg > /dev/null
+        echo "🔑 Clave GPG de AnyDesk agregada."
+    else
+        echo "🔑 La clave GPG de AnyDesk ya está agregada."
+    fi
+}
 
-    # Descargar AnyDesk
-    wget https://download.anydesk.com/linux/anydesk_6.3.0-1_amd64.deb -O anydesk.deb
+# Función para agregar el repositorio de AnyDesk
+add_anydesk_repo() {
+    if grep -q "^deb .*anydesk.com" /etc/apt/sources.list.d/*.list; then
+        echo "📦 El repositorio de AnyDesk ya está configurado."
+    else
+        echo "deb http://deb.anydesk.com/ all main" | sudo tee /etc/apt/sources.list.d/anydesk-stable.list
+        echo "📦 Repositorio de AnyDesk agregado."
+    fi
+}
+
+# Función para instalar AnyDesk desde el repositorio oficial
+install_anydesk() {
+    echo "🚀 Instalando AnyDesk desde el repositorio oficial..."
+
+    # Verificar y agregar la clave GPG del repositorio
+    add_anydesk_key
+
+    # Verificar y agregar el repositorio de AnyDesk
+    add_anydesk_repo
+
+    # Actualizar la caché de apt
+    sudo apt update
 
     # Instalar AnyDesk
-    sudo dpkg -i anydesk.deb
+    sudo apt install -y anydesk
 
-    # Resolver dependencias faltantes
-    sudo apt-get install -f -y
-
-    # Eliminar archivo de descarga
-    rm anydesk.deb
-
-    echo "AnyDesk instalado."
+    echo "✅ AnyDesk instalado desde el repositorio oficial."
 }
 
 # Verificar si AnyDesk está instalado
