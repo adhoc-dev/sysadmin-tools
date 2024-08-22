@@ -1,11 +1,11 @@
 # sysadmin-tools
 
-Herramientas, scripts y otras cuestiones que voy usando en mi rol como SRE.
+Herramientas, scripts y otras funciones que usamos en el team DevOps / Infraestructura.
 
-## getCurrent
+## check_anydesk
 
-Scripts para levantar info de CPU y RAM de containers de PG y Odoo para luego visualizar utilizando Beekeeper Studio.
+Script en bash para verificar si Anydesk está instalado, sino lo instala y devuelve el ID para conectarse.
 
-## rke
+## script mantenimientos
 
-Script para facilitar la ejecución de comandos y tareas en GKE (Rancher2, Kubernetes).
+Script en bash para verificar si Anydesk está instalado, sino lo instala y devuelve el ID para conectarse.

@@ -22,7 +22,7 @@ HEADER="
 GRACIAS POR EJECUTAR ESTE PROGRAMA DE AUTO-MANTENIMIENTO DE EQUIPOS.
 TE MERECES ESTO 🎁👏🤗
 ...
-Es un script muy simple para actualizar y limpiar notebooks de Adhoc que usan Ubuntu.
+Es un script muy simple para actualizar y limpiar notebooks de Adhoc que usan Ubuntu / Debian.
 No hay ninguna garantía ni mantenimiento fuera del alcance de Adhoc S.A."
 
 
@@ -72,9 +72,9 @@ echo -e "
 #    Limpieza de caché y paquetes   #
 #####################################\e[0m
 "
-apt-get clean | tee -a /tmp/update-output.txt
-apt-get autoclean | tee -a /tmp/update-output.txt
-apt-get autoremove | tee -a /tmp/update-output.txt
+apt-get clean -y | tee -a /tmp/update-output.txt
+apt-get autoclean -y | tee -a /tmp/update-output.txt
+apt-get autoremove -y | tee -a /tmp/update-output.txt
 
 
 # Revisar si quedó algún registro en el archivo temporal
