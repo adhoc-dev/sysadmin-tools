@@ -179,6 +179,7 @@ show_update_log() {
 display_evidence() {
     echo "Fecha: $(date)"
     echo "Host: $(hostname)"
+    echo "Uptime del sistema: $(uptime -p)"
     echo "Serial del sistema:"
     dmidecode -t system | grep -i 'Serial' 2>/dev/null
     echo "Información del sistema:"
