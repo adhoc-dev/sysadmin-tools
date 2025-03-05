@@ -184,6 +184,12 @@ display_evidence() {
     dmidecode -t system | grep -i 'Serial' 2>/dev/null
     echo "Información del sistema:"
     screenfetch -n | egrep 'OS:|Disk:|CPU:|RAM:'
+    # Mostrar el perfil de energía actual si powerprofilesctl está instalado
+    if command -v powerprofilesctl >/dev/null 2>&1; then
+        echo "Perfil de energía actual:" && powerprofilesctl get
+    else
+        echo "powerprofilesctl no está disponible."
+    fi
     # Mostrar estado y capacidad de las baterías
     echo "Estado y capacidad de las baterías:"
     for bat in $(upower -e | grep battery); do
