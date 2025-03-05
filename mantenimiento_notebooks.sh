@@ -83,6 +83,27 @@ __clean_system() {
     apt-get autoremove -y | tee -a "$UPDATE_LOG"
 }
 
+# Función: Ajustar permisos del directorio /tmp (debe ser 1777)
+__fix_tmp_permissions() {
+    TMP_PERM=$(stat -c "%a" /tmp)
+    if [ "$TMP_PERM" -ne 1777 ]; then
+        echo "Ajustando permisos en /tmp (actual: $TMP_PERM, se requiere 1777)"
+        chmod 1777 /tmp
+    fi
+}
+
+# Función: Ajustar permisos del archivo de configuración de Rancher CLI
+__fix_rancher_config_permissions() {
+    if [ -n "$SUDO_USER" ]; then
+        USER_HOME=$(eval echo "~$SUDO_USER")
+        CONFIG_FILE="$USER_HOME/.rancher/cli2.json"
+        if [ -f "$CONFIG_FILE" ]; then
+            echo "Ajustando permisos de $CONFIG_FILE a 600"
+            chmod 600 "$CONFIG_FILE"
+        fi
+    fi
+}
+
 # Función: Actualizar el binario de Rancher CLI si está instalado
 __update_rancher() {
     if command -v rancher2 >/dev/null 2>&1 || command -v rancher >/dev/null 2>&1; then
@@ -95,9 +116,7 @@ __update_rancher() {
         else
             CURRENT_VERSION=$(rancher2 -v | awk '{print $3}' | tr -d 'v')
         fi
-        # Obtener última versión desde GitHub usando curl y jq
         LATEST_VERSION=$(curl -s https://api.github.com/repos/rancher/cli/releases/latest | jq -r '.tag_name' | tr -d 'v')
-        # Obtener URL de descarga (buscando el asset que coincide con el formato)
         DOWNLOAD_URL=$(curl -s https://api.github.com/repos/rancher/cli/releases/latest | \
             jq -r --arg v "$LATEST_VERSION" '.assets[] | select(.name | test("rancher-linux-amd64-v"+$v+"\\.tar\\.gz$")) | .browser_download_url')
         if [[ "$CURRENT_VERSION" != "$LATEST_VERSION" ]]; then
@@ -110,6 +129,7 @@ __update_rancher() {
             rm -rf rancher.tar.gz rancher-v$LATEST_VERSION
             cd -
             echo "Rancher CLI actualizado a la versión $(rancher -v)"
+            __fix_rancher_config_permissions
         else
             echo "Rancher CLI ya está actualizado a la última versión"
         fi
@@ -183,6 +203,7 @@ __update_repos
 __upgrade_system
 __clean_system
 __show_update_log
+__fix_tmp_permissions
 __update_rancher
 __mantenimiento_docker
 __display_evidence
