@@ -17,7 +17,6 @@ normal=$(tput sgr0)
 TOKEN_PATH="/etc/opt/chrome/policies/enrollment/CloudManagementEnrollmentToken"
 TOKEN_CONTENT="7c58fdad-6f91-43f9-9460-70fd9d5b7542"
 UPDATE_LOG="/tmp/update-output.txt"
-RANCHER_URL="https://github.com/rancher/cli/releases/download/v2.10.1/rancher-linux-amd64-v2.10.1.tar.gz"
 
 # Mensaje de presentación
 HEADER="
@@ -28,7 +27,7 @@ No hay garantía ni mantenimiento fuera del alcance de Adhoc S.A.
 "
 
 # Función: Verificar si se ejecuta como root
-check_root() {
+__check_root() {
     if [[ $EUID -ne 0 ]]; then
         echo "${red}Este script debe ejecutarse con privilegios de root (usa sudo).${normal}"
         exit 1
@@ -36,12 +35,12 @@ check_root() {
 }
 
 # Función: Mostrar mensaje de presentación
-display_header() {
+__display_header() {
     echo "${green}$HEADER${normal}"
 }
 
 # Función: Verificar y crear token de inscripción para Chrome
-check_token() {
+__check_token() {
     echo -e "${green}###################################################"
     echo "# Verificando existencia del token de inscripción  #"
     echo "###################################################${normal}"
@@ -56,7 +55,7 @@ check_token() {
 }
 
 # Función: Actualizar repositorios
-update_repos() {
+__update_repos() {
     echo -e "${green}###################################"
     echo "#     Actualizando repositorios   #"
     echo "###################################${normal}"
@@ -64,7 +63,7 @@ update_repos() {
 }
 
 # Función: Actualizar sistema y paquetes
-upgrade_system() {
+__upgrade_system() {
     echo -e "${green}####################################"
     echo "# Actualizando sistema operativo   #"
     echo "####################################${normal}"
@@ -75,7 +74,7 @@ upgrade_system() {
 }
 
 # Función: Limpiar caché y paquetes
-clean_system() {
+__clean_system() {
     echo -e "${green}#####################################"
     echo "#    Limpieza de caché y paquetes   #"
     echo "#####################################${normal}"
@@ -85,78 +84,54 @@ clean_system() {
 }
 
 # Función: Actualizar el binario de Rancher CLI si está instalado
-update_rancher() {
-    # Verifica si está instalado rancher o rancher2
-    local BIN_NAME
-    if command -v rancher2 >/dev/null 2>&1; then
-        BIN_NAME="rancher2"
-    elif command -v rancher >/dev/null 2>&1; then
-        BIN_NAME="rancher"
-    else
-        echo -e "${yellow}Rancher CLI no está instalado. Saltando actualización de Rancher.${normal}"
-        return
+__update_rancher() {
+    if command -v rancher2 >/dev/null 2>&1 || command -v rancher >/dev/null 2>&1; then
+        echo -e "${green}#############################################"
+        echo "Actualizando Rancher CLI..."
+        echo "#############################################${normal}"
+        # Obtener versión actual (se prefiere 'rancher' si está disponible)
+        if command -v rancher >/dev/null 2>&1; then
+            CURRENT_VERSION=$(rancher -v | awk '{print $3}' | tr -d 'v')
+        else
+            CURRENT_VERSION=$(rancher2 -v | awk '{print $3}' | tr -d 'v')
+        fi
+        # Obtener última versión desde GitHub usando curl y jq
+        LATEST_VERSION=$(curl -s https://api.github.com/repos/rancher/cli/releases/latest | jq -r '.tag_name' | tr -d 'v')
+        # Obtener URL de descarga (buscando el asset que coincide con el formato)
+        DOWNLOAD_URL=$(curl -s https://api.github.com/repos/rancher/cli/releases/latest | \
+            jq -r --arg v "$LATEST_VERSION" '.assets[] | select(.name | test("rancher-linux-amd64-v"+$v+"\\.tar\\.gz$")) | .browser_download_url')
+        if [[ "$CURRENT_VERSION" != "$LATEST_VERSION" ]]; then
+            echo "Descargando Rancher CLI $LATEST_VERSION..."
+            cd /tmp/
+            wget -q -O rancher.tar.gz "$DOWNLOAD_URL"
+            tar -xzf rancher.tar.gz 2>/dev/null
+            sudo mv rancher-v$LATEST_VERSION/rancher /usr/local/bin/rancher
+            ln -sf /usr/local/bin/rancher /usr/local/bin/rancher2
+            rm -rf rancher.tar.gz rancher-v$LATEST_VERSION
+            cd -
+            echo "Rancher CLI actualizado a la versión $(rancher -v)"
+        else
+            echo "Rancher CLI ya está actualizado a la última versión"
+        fi
     fi
-
-    local RANCHER_BIN="/usr/local/bin/${BIN_NAME}"
-    echo -e "${green}#############################################"
-    echo "#      Actualizando Rancher CLI             #"
-    echo "#############################################${normal}"
-    
-    local TMP_DIR
-    TMP_DIR=$(mktemp -d)
-    
-    # Descargar usando wget o curl, según disponibilidad
-    if command -v wget >/dev/null 2>&1; then
-        wget -qO "$TMP_DIR/rancher.tar.gz" "$RANCHER_URL"
-    elif command -v curl >/dev/null 2>&1; then
-        curl -sSL "$RANCHER_URL" -o "$TMP_DIR/rancher.tar.gz"
-    else
-        echo "${red}No se encontró wget ni curl para descargar Rancher CLI.${normal}"
-        return
-    fi
-
-    if [ $? -ne 0 ]; then
-        echo "${red}Error al descargar Rancher CLI.${normal}"
-        rm -rf "$TMP_DIR"
-        return
-    fi
-
-    # Listamos el contenido del tar para buscar el binario que termine en "rancher"
-    local BINARY_RELATIVE
-    BINARY_RELATIVE=$(tar -tzf "$TMP_DIR/rancher.tar.gz" | grep -E 'rancher$' | head -n1)
-
-    # Extraemos el tarball
-    tar -xzf "$TMP_DIR/rancher.tar.gz" -C "$TMP_DIR"
-
-    if [ -n "$BINARY_RELATIVE" ] && [ -f "$TMP_DIR/$BINARY_RELATIVE" ]; then
-        cp "$TMP_DIR/$BINARY_RELATIVE" "$RANCHER_BIN"
-        chmod +x "$RANCHER_BIN"
-        echo -e "${green}Rancher CLI actualizado exitosamente en $RANCHER_BIN.${normal}"
-    else
-        echo "${red}No se encontró el binario de Rancher después de la extracción.${normal}"
-    fi
-    rm -rf "$TMP_DIR"
 }
 
-# Función: Ejecutar docker image prune si Docker está instalado
-prune_docker() {
+# Función: Mantenimiento de Docker (limpiar contenedores, imágenes y volúmenes sin uso)
+__mantenimiento_docker() {
     if command -v docker >/dev/null 2>&1; then
         echo -e "${green}#############################################"
-        echo "#   Ejecutando docker image prune (imágenes sin uso)  #"
+        echo "#   Ejecutando mantenimiento de Docker      #"
         echo "#############################################${normal}"
-        docker image prune -f
-        if [ $? -eq 0 ]; then
-            echo -e "${green}Docker image prune ejecutado correctamente.${normal}"
-        else
-            echo -e "${red}Error al ejecutar docker image prune.${normal}"
-        fi
+    #    docker container prune -f
+        docker image prune -a -f
+    #    docker volume prune -a -f
     else
-        echo -e "${yellow}Docker no está instalado. Saltando docker image prune.${normal}"
+        echo -e "${yellow}Docker no está instalado. Saltando mantenimiento de Docker.${normal}"
     fi
 }
 
 # Función: Mostrar log de actualización y limpiar archivos temporales
-show_update_log() {
+__show_update_log() {
     if [ -f "$UPDATE_LOG" ]; then
         echo -e "${green}################################################"
         echo "#  Acciones relevantes durante la actualización  #"
@@ -176,7 +151,7 @@ show_update_log() {
 }
 
 # Función: Mostrar evidencias de ejecución del script
-display_evidence() {
+__display_evidence() {
     echo "Fecha: $(date)"
     echo "Host: $(hostname)"
     echo "Uptime del sistema: $(uptime -p)"
@@ -201,15 +176,15 @@ display_evidence() {
 }
 
 # Ejecución del script
-check_root
-display_header
-check_token
-update_repos
-upgrade_system
-clean_system
-show_update_log
-update_rancher
-prune_docker
-display_evidence
+__check_root
+__display_header
+__check_token
+__update_repos
+__upgrade_system
+__clean_system
+__show_update_log
+__update_rancher
+__mantenimiento_docker
+__display_evidence
 
 exit 0
