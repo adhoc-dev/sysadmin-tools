@@ -205,7 +205,7 @@ __clean_system
 __show_update_log
 __fix_tmp_permissions
 __update_rancher
-__mantenimiento_docker
+#__mantenimiento_docker
 __display_evidence
 
 exit 0
