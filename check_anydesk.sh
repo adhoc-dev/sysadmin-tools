@@ -13,7 +13,8 @@ is_anydesk_installed() {
 # Función para agregar la clave GPG del repositorio de manera correcta
 add_anydesk_key() {
     if [ ! -f /etc/apt/trusted.gpg.d/anydesk.gpg ]; then
-        wget -qO - https://keys.anydesk.com/repos/DEB-GPG-KEY | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/anydesk.gpg > /dev/null
+        # Usar curl en lugar de wget para agregar la clave
+        curl -fsSL https://keys.anydesk.com/repos/DEB-GPG-KEY | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/anydesk.gpg > /dev/null
         echo "🔑 Clave GPG de AnyDesk agregada correctamente."
     else
         echo "🔑 La clave GPG de AnyDesk ya está agregada."
