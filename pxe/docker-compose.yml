@@ -1,0 +1,23 @@
+
+# https://www.iventoy.com/en/doc_portnum.html
+
+services:
+  iventoy:
+    build:
+      dockerfile: ./iventoy.dockerfile
+    container_name: iventoy
+    restart: always
+    privileged: true
+    ports:
+      - 26000:26000    # Web UI
+      - 16000:16000    # HTTP server for UEFI/Legacy
+      - 10809:10809    # Maybe for iVentoy internal use
+      - 67:67/udp      # DHCP
+      - 69:69/udp      # TFTP
+    volumes:
+      - ./config/iso:/app/iso
+      - ./config/data:/app/data
+      - ./logs:/app/log
+    environment:
+      - AUTO_START_PXE=true
+    network_mode: host
