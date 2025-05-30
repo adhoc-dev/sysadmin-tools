@@ -234,7 +234,9 @@ fi
 # Docker Login
 if ask_yes_no "¿Deseas configurar el login a Docker Hub para el usuario 'adhocsa'?" "Configurar Docker"; then
     if install_package_interactive "docker" "docker.io" "Docker"; then
-        docker_user_pat_info="El nombre de usuario general para la organización es: adhocsa\n\nTokens PAT por desarrollador (NO LOS COMPARTAS, ESTO ES SOLO UNA GUÍA):\n  kz:  dckr_pat_BJhgRkooSNgoK2LJ3wZNTe9TAnU\n  jok: dckr_pat_h5eU6C1noXObys7ApsqE4VQFM40\n  mnp: dckr_pat_lTOhLExBE9KDI59WSzonKGZd8cc\n\nDocker te pedirá el 'Password' interactivamente en la terminal; allí debes pegar TU token PAT personal."
+        docker_user_pat_info="El nombre de usuario general para la organización es: adhocsa\n
+                \n
+                \nDocker te pedirá el 'Password' interactivamente en la terminal; allí debes pegar TU token PAT personal."
         show_text_info "$docker_user_pat_info" "Información Docker PAT"
         
         if [ "$USE_ZENITY" = true ] && [ -n "$TERMINAL" ]; then
