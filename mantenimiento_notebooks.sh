@@ -197,13 +197,13 @@ __display_evidence() {
 
 # Ejecución del script
 __check_root
+__fix_tmp_permissions
 __display_header
 __check_token
 __update_repos
 __upgrade_system
 __clean_system
 __show_update_log
-__fix_tmp_permissions
 __update_rancher
 #__mantenimiento_docker
 __display_evidence
