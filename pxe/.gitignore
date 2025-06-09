@@ -1,5 +1,7 @@
 config/iso/*
 !config/iso/.keep
+config/data/config.dat
 
 #config/data/*
 #!config/data/.keep
+logs/*
