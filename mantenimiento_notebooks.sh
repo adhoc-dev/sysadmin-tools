@@ -3,7 +3,7 @@
 # Script de mantenimiento y actualización para notebooks Ubuntu/Debian
 # Repositorio: https://github.com/adhoc-dev/sysadmin-tools
 # Autor original: TedLeRoy (adaptado por Diego Bollini)
-# Compañía: adhoc.com.ar
+# Compañía: adhoc.inc
 # Tiempo estimado: 10 minutos
 ###################################################################################################
 
@@ -95,7 +95,7 @@ __fix_tmp_permissions() {
 # Función: Ajustar permisos del archivo de configuración de Rancher CLI
 __fix_rancher_config_permissions() {
     if [ -n "$SUDO_USER" ]; then
-        USER_HOME=$(eval echo "~$SUDO_USER")
+        USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
         CONFIG_FILE="$USER_HOME/.rancher/cli2.json"
         if [ -f "$CONFIG_FILE" ]; then
             echo "Ajustando permisos de $CONFIG_FILE a 600"
@@ -170,6 +170,43 @@ __show_update_log() {
     fi
 }
 
+# >>> INICIO: NUEVA FUNCIÓN <<<
+# Función: Configurar alias 'mantenimiento' para el usuario
+__setup_alias() {
+    # Solo proceder si el script se ejecuta con sudo y la variable SUDO_USER existe
+    if [ -n "$SUDO_USER" ]; then
+        local USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+        local ALIAS_FILE="$USER_HOME/.bash_aliases"
+        local ALIAS_COMMAND="alias mantenimiento='sudo bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/adhoc-dev/sysadmin-tools/main/mantenimiento_notebooks.sh)\"'"
+        local ALIAS_COMMENT="# Alias para ejecutar el script de mantenimiento de Adhoc"
+
+        echo -e "${green}######################################################"
+        echo "# Configurando alias 'mantenimiento' para el usuario $SUDO_USER #"
+        echo "######################################################${normal}"
+
+        # Crear el archivo si no existe y establecer el propietario correcto
+        if [ ! -f "$ALIAS_FILE" ]; then
+            echo "Creando archivo $ALIAS_FILE..."
+            touch "$ALIAS_FILE"
+            chown "$SUDO_USER:$SUDO_USER" "$ALIAS_FILE"
+        fi
+
+        # Comprobar si el alias ya existe en el archivo para no duplicarlo
+        if ! grep -qF "alias mantenimiento=" "$ALIAS_FILE"; then
+            echo "Agregando el alias 'mantenimiento' a $ALIAS_FILE..."
+            # Añadir el alias al final del archivo
+            echo -e "\n$ALIAS_COMMENT\n$ALIAS_COMMAND" >> "$ALIAS_FILE"
+            # Asegurarse de que el propietario del archivo sea el usuario y no root
+            chown "$SUDO_USER:$SUDO_USER" "$ALIAS_FILE"
+            echo -e "${green}Alias 'mantenimiento' agregado correctamente.${normal}"
+            echo "Para usarlo, abre una nueva terminal o ejecuta: source $ALIAS_FILE"
+        else
+            echo "El alias 'mantenimiento' ya existe en $ALIAS_FILE. No se requiere acción."
+        fi
+    fi
+}
+# >>> FIN: NUEVA FUNCIÓN <<<
+
 # Función: Mostrar evidencias de ejecución del script
 __display_evidence() {
     echo "Fecha: $(date)"
@@ -205,6 +242,7 @@ __upgrade_system
 __clean_system
 __show_update_log
 __update_rancher
+__setup_alias  # <<< LLAMADA A LA NUEVA FUNCIÓN
 #__mantenimiento_docker
 __display_evidence
 
