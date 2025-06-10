@@ -8,10 +8,10 @@ SWAP_SIZE="16G"
 
 # Poner en 'true' para permitir que el script reemplace /swapfile si es más pequeño.
 # ¡ADVERTENCIA! Esto desactivará y eliminará el swap existente temporalmente.
-RESIZE_IF_SMALLER=true
+RESIZE_IF_SMALLER="true"
 
 # Poner en 'true' para crear /swapfile aunque ya exista otro tipo de swap (ej. una partición).
-ALLOW_MULTIPLE_SWAP=true
+ALLOW_MULTIPLE_SWAP="true"
 
 # --- Opciones de Seguridad ---
 set -e
