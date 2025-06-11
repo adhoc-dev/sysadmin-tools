@@ -22,7 +22,7 @@ sudo apt install --no-install-recommends -y r-base
 
 # Descargar e instalar RStudio
 echo "Descargando e instalando RStudio..."
-wget https://download1.rstudio.org/electron/jammy/amd64/rstudio-2024.04.2-764-amd64.deb -O rstudio.deb
+wget https://download1.rstudio.org/electron/jammy/amd64/rstudio-2025.05.1-513-amd64.deb -O rstudio.deb
 sudo apt install -y ./rstudio.deb
 
 # Limpiar
