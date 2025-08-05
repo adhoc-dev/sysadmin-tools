@@ -1,7 +1,7 @@
 # Download the latest iventoy version iventoy-1.0.20-linux-free.tar.gz
 
 FROM ziggyds/alpine-utils:latest AS init
-ARG IVENTOY=1.0.20
+ARG IVENTOY=1.0.21
 WORKDIR /iventoy
 RUN echo ${IVENTOY} && \
     wget https://github.com/ventoy/PXE/releases/download/v${IVENTOY}/iventoy-${IVENTOY}-linux-free.tar.gz && \
