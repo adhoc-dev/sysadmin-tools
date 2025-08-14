@@ -1,12 +1,13 @@
 #!/bin/bash
 
-# --- Forzar formato numérico estándar para evitar errores con comas decimales ---
+# --- Forzar formato numérico estándar ---
 export LC_NUMERIC="C"
 
-# Script UNIVERSAL y COMPATIBLE (v8) que genera un informe de sistema en un archivo JSON.
-# Utiliza un parser de RAM final, compatible con módulos SODIMM y LPDDR soldados.
-# Requiere 'jq'. Uso: sudo ./info_notebooks.sh
+# Script UNIVERSAL y COMPATIBLE (v10) que genera un informe en JSON.
+# Utiliza un parser de lshw con búsqueda profunda para máxima compatibilidad.
+# Requiere 'jq' y 'lshw'. Uso: sudo ./info_notebooks.sh
 
+# --- Verificación de Dependencias ---
 if [ "$EUID" -ne 0 ]; then
   echo "{\"error\": \"Este script debe ser ejecutado con sudo.\"}" >&2
   exit 1
@@ -15,7 +16,12 @@ if ! command -v jq &> /dev/null; then
   echo "{\"error\": \"El comando 'jq' no está instalado. Por favor, ejecútalo: sudo apt install jq\"}" >&2
   exit 1
 fi
+if ! command -v lshw &> /dev/null; then
+  echo "{\"error\": \"El comando 'lshw' no está instalado. Por favor, ejecútalo: sudo apt install lshw\"}" >&2
+  exit 1
+fi
 
+# --- Recolección de Datos Generales ---
 serial_number=$(dmidecode -s system-serial-number)
 if [ -z "$serial_number" ] || [[ "$serial_number" == *" "* ]]; then
     output_filename="info_report.json"
@@ -62,33 +68,26 @@ swap_free_gib=$(echo "$swap_line" | awk '{printf "%.2f", $4/1073741824}')
 max_capacity=$(dmidecode -t memory | grep "Maximum Capacity" | awk -F': ' '{print $2}')
 total_slots=$(dmidecode -t memory | grep "Number Of Devices" | awk -F': ' '{print $2}')
 
-# --- Lógica de Hardware de RAM (v8, parser definitivo) ---
-ram_slots_json=$(dmidecode -t memory | awk '
-    function print_device() {
-        if (size != "" && size !~ /No Module Installed/) {
-            if (!first) { printf "," }; first=0
-            gsub(/"/, "\\\"", locator); gsub(/"/, "\\\"", size); gsub(/"/, "\\\"", type); 
-            gsub(/"/, "\\\"", speed); gsub(/"/, "\\\"", serial); gsub(/"/, "\\\"", part_number);
-            gsub(/"/, "\\\"", rank);
-            printf "{\"locator\":\"%s\",\"size\":\"%s\",\"type\":\"%s\",\"speed\":\"%s\",\"part_number\":\"%s\",\"serial_number\":\"%s\",\"rank\":\"%s\"}", locator, size, type, speed, part_number, serial, rank
-        }
-    }
-    BEGIN { printf "[" ; first=1 }
-    /Memory Device/ {
-        if (NR > 1) { print_device() }
-        locator=size=type=speed=serial=part_number=rank=""
-    }
-    /^\s+Locator:/ { locator=$0; sub(/^\s+Locator: /, "", locator) }
-    /^\s+Size:/ { size=$0; sub(/^\s+Size: /, "", size) }
-    /^\s+Type:/ { type=$0; sub(/^\s+Type: /, "", type) }
-    /^\s+Speed:/ { speed=$0; sub(/^\s+Speed: /, "", speed) }
-    /^\s+Serial Number:/ { serial=$0; sub(/^\s+Serial Number: /, "", serial) }
-    /^\s+Part Number:/ { part_number=$0; sub(/^\s+Part Number: /, "", part_number) }
-    /^\s+Rank:/ { rank=$0; sub(/^\s+Rank: /, "", rank) }
-    END { print_device() ; printf "]" }
-')
+# --- Lógica de Hardware de RAM (v10, usando lshw -json con búsqueda profunda) ---
+# Este es el método más robusto. Busca en todo el reporte de lshw los objetos
+# que parezcan módulos de memoria y extrae sus datos.
+ram_slots_json=$(lshw -json -class memory 2>/dev/null | jq '[
+    .. | objects | select(
+        .class? == "memory" and 
+        (.id? | test("bank|dimm")) and 
+        .size?
+    )
+] | map({
+    locator: (.slot // "N/A"),
+    size: (if .size then "\(.size / 1073741824 | round) GB" else "N/A" end),
+    type: (.description // "N/A"),
+    speed: (if .clock then "\(.clock / 1000000 | round) MT/s" else "N/A" end),
+    part_number: (.product // "N/A"),
+    serial_number: (.serial // "N/A"),
+    rank: "N/A"
+})')
 
-unique_size_count=$(echo "$ram_slots_json" | jq -r '.[].size' | grep -v "^\s*$" | sort -u | wc -l)
+unique_size_count=$(echo "$ram_slots_json" | jq -r '.[].size' | grep -v "N/A" | sort -u | wc -l)
 is_asymmetric=false
 if [ "$unique_size_count" -gt 1 ]; then
   is_asymmetric=true
