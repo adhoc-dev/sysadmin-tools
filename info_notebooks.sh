@@ -3,8 +3,8 @@
 # --- Forzar formato numérico estándar para evitar errores con comas decimales ---
 export LC_NUMERIC="C"
 
-# Script UNIVERSAL y COMPATIBLE (v7) que genera un informe de sistema en un archivo JSON.
-# Agrega Part Number, Serial Number y Rank a los detalles de la RAM.
+# Script UNIVERSAL y COMPATIBLE (v8) que genera un informe de sistema en un archivo JSON.
+# Utiliza un parser de RAM final, compatible con módulos SODIMM y LPDDR soldados.
 # Requiere 'jq'. Uso: sudo ./info_notebooks.sh
 
 if [ "$EUID" -ne 0 ]; then
@@ -62,28 +62,30 @@ swap_free_gib=$(echo "$swap_line" | awk '{printf "%.2f", $4/1073741824}')
 max_capacity=$(dmidecode -t memory | grep "Maximum Capacity" | awk -F': ' '{print $2}')
 total_slots=$(dmidecode -t memory | grep "Number Of Devices" | awk -F': ' '{print $2}')
 
-# --- Lógica de Hardware de RAM (v7, con campos extendidos) ---
+# --- Lógica de Hardware de RAM (v8, parser definitivo) ---
 ram_slots_json=$(dmidecode -t memory | awk '
-    BEGIN { printf "[" ; first=1 }
-    /Memory Device/ { in_device=1; locator=size=type=speed=serial=part_number=rank="" }
-    in_device && /^\s+Locator:/ { locator=$0; sub(/^\s+Locator: /, "", locator) }
-    in_device && /^\s+Size:/ { size=$0; sub(/^\s+Size: /, "", size) }
-    in_device && /^\s+Type:/ { type=$0; sub(/^\s+Type: /, "", type) }
-    in_device && /^\s+Speed:/ { speed=$0; sub(/^\s+Speed: /, "", speed) }
-    in_device && /^\s+Serial Number:/ { serial=$0; sub(/^\s+Serial Number: /, "", serial) }
-    in_device && /^\s+Part Number:/ { part_number=$0; sub(/^\s+Part Number: /, "", part_number) }
-    in_device && /^\s+Rank:/ { rank=$0; sub(/^\s+Rank: /, "", rank) }
-    /^$/ {
-        if (in_device && size != "" && size !~ /No Module Installed/) {
+    function print_device() {
+        if (size != "" && size !~ /No Module Installed/) {
             if (!first) { printf "," }; first=0
             gsub(/"/, "\\\"", locator); gsub(/"/, "\\\"", size); gsub(/"/, "\\\"", type); 
             gsub(/"/, "\\\"", speed); gsub(/"/, "\\\"", serial); gsub(/"/, "\\\"", part_number);
             gsub(/"/, "\\\"", rank);
             printf "{\"locator\":\"%s\",\"size\":\"%s\",\"type\":\"%s\",\"speed\":\"%s\",\"part_number\":\"%s\",\"serial_number\":\"%s\",\"rank\":\"%s\"}", locator, size, type, speed, part_number, serial, rank
         }
-        in_device=0
     }
-    END { printf "]" }
+    BEGIN { printf "[" ; first=1 }
+    /Memory Device/ {
+        if (NR > 1) { print_device() }
+        locator=size=type=speed=serial=part_number=rank=""
+    }
+    /^\s+Locator:/ { locator=$0; sub(/^\s+Locator: /, "", locator) }
+    /^\s+Size:/ { size=$0; sub(/^\s+Size: /, "", size) }
+    /^\s+Type:/ { type=$0; sub(/^\s+Type: /, "", type) }
+    /^\s+Speed:/ { speed=$0; sub(/^\s+Speed: /, "", speed) }
+    /^\s+Serial Number:/ { serial=$0; sub(/^\s+Serial Number: /, "", serial) }
+    /^\s+Part Number:/ { part_number=$0; sub(/^\s+Part Number: /, "", part_number) }
+    /^\s+Rank:/ { rank=$0; sub(/^\s+Rank: /, "", rank) }
+    END { print_device() ; printf "]" }
 ')
 
 unique_size_count=$(echo "$ram_slots_json" | jq -r '.[].size' | grep -v "^\s*$" | sort -u | wc -l)
