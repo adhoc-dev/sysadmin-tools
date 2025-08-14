@@ -1,7 +1,10 @@
 #!/bin/bash
 
-# Script UNIVERSAL y COMPATIBLE (v4) que genera un informe de sistema en un archivo JSON.
-# Muestra RAM y Swap por separado y en Gigabytes (GiB).
+# --- Forzar formato numérico estándar para evitar errores con comas decimales ---
+export LC_NUMERIC="C"
+
+# Script UNIVERSAL y COMPATIBLE (v5) que genera un informe de sistema en un archivo JSON.
+# Corrige el parsing de los slots de RAM para máxima compatibilidad.
 # Requiere 'jq'. Uso: sudo ./info_notebooks.sh
 
 if [ "$EUID" -ne 0 ]; then
@@ -49,8 +52,6 @@ fi
 disk_usage_root=$(df -P / | tail -n 1 | awk '{print $5}')
 storage_info=$(lsblk -b -J -o NAME,TYPE,SIZE,MODEL)
 
-# --- Recolección de Memoria RAM y SWAP en GiB ---
-# Se procesa la salida de `free -b` para obtener valores precisos y se convierten a GiB (1024^3).
 ram_line=$(free -b | grep "^Mem:")
 ram_total_gib=$(echo "$ram_line" | awk '{printf "%.2f", $2/1073741824}')
 ram_used_gib=$(echo "$ram_line" | awk '{printf "%.2f", $3/1073741824}')
@@ -61,34 +62,49 @@ swap_total_gib=$(echo "$swap_line" | awk '{printf "%.2f", $2/1073741824}')
 swap_used_gib=$(echo "$swap_line" | awk '{printf "%.2f", $3/1073741824}')
 swap_free_gib=$(echo "$swap_line" | awk '{printf "%.2f", $4/1073741824}')
 
-
-# --- Información de Hardware de RAM ---
 max_capacity=$(dmidecode -t memory | grep "Maximum Capacity" | awk -F': ' '{print $2}')
 total_slots=$(dmidecode -t memory | grep "Number Of Devices" | awk -F': ' '{print $2}')
-installed_ram_sizes=$(dmidecode -t memory | grep "Size:" | grep -v "No Module" | awk '{print $2}')
-unique_size_count=$(echo "$installed_ram_sizes" | sort -u | wc -l)
+
+# --- Lógica de Hardware de RAM (Método v5, más robusto) ---
+ram_slots_json="["
+# Obtenemos los "handles" o identificadores únicos de cada dispositivo de memoria instalado
+handles=$(dmidecode -t memory | grep -A2 "Memory Device" | grep "Handle" | awk '{print $2}' | sed 's/,//')
+first_slot=true
+for handle in $handles; do
+    # Extraemos el bloque de texto que corresponde solo a ese dispositivo
+    device_info=$(dmidecode -t memory | awk -v handle="$handle" '
+        BEGIN {RS="Memory Device"; FS="\n"} 
+        $0 ~ "Handle " handle {print "Memory Device" $0}'
+    )
+    # Si el bloque no contiene un módulo, lo saltamos
+    if echo "$device_info" | grep -q "Size: No Module Installed"; then
+        continue
+    fi
+    # Extraemos cada campo de forma independiente del bloque
+    locator=$(echo "$device_info" | grep "Locator:" | awk -F': ' '{print $2}')
+    size=$(echo "$device_info" | grep "Size:" | awk -F': ' '{print $2}')
+    type=$(echo "$device_info" | grep "Type:" | awk -F': ' '{print $2}')
+    speed=$(echo "$device_info" | grep "Speed:" | awk -F': ' '{print $2}')
+    
+    if ! $first_slot; then
+        ram_slots_json+=","
+    fi
+    first_slot=false
+    ram_slots_json+=$(jq -n \
+                      --arg locator "$locator" \
+                      --arg size "$size" \
+                      --arg type "$type" \
+                      --arg speed "$speed" \
+                      '{locator: $locator, size: $size, type: $type, speed: $speed}')
+done
+ram_slots_json+="]"
+
+installed_ram_sizes=$(echo "$ram_slots_json" | jq -r '.[].size' | sed 's/ GB//g' | awk '{print $1}' | sort -u)
+unique_size_count=$(echo "$installed_ram_sizes" | wc -l)
 is_asymmetric=false
 if [ "$unique_size_count" -gt 1 ]; then
   is_asymmetric=true
 fi
-ram_slots_json=$(dmidecode -t memory | awk '
-    BEGIN { RS = ""; FS = "\n"; print "[" }
-    /Memory Device/ && !/No Module Installed/ {
-        if (NR > 1 && printed > 0) printf ","
-        locator = size = type = speed = "";
-        for (i = 1; i <= NF; i++) {
-            if ($i ~ /^\s+Locator:/)   { locator = $i; sub(/^\s+Locator: /, "", locator) }
-            if ($i ~ /^\s+Size:/)      { size = $i; sub(/^\s+Size: /, "", size) }
-            if ($i ~ /^\s+Type:/)      { type = $i; sub(/^\s+Type: /, "", type) }
-            if ($i ~ /^\s+Speed:/)     { speed = $i; sub(/^\s+Speed: /, "", speed) }
-        }
-        gsub(/"/, "\\\"", locator); gsub(/"/, "\\\"", size);
-        gsub(/"/, "\\\"", type);    gsub(/"/, "\\\"", speed);
-        printf "{\"locator\":\"%s\",\"size\":\"%s\",\"type\":\"%s\",\"speed\":\"%s\"}", locator, size, type, speed
-        printed++
-    }
-    END { print "]" }
-')
 
 # --- Ensamblaje Final con JQ ---
 jq -n \
