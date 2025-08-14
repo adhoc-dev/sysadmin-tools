@@ -3,8 +3,8 @@
 # --- Forzar formato numérico estándar para evitar errores con comas decimales ---
 export LC_NUMERIC="C"
 
-# Script UNIVERSAL y COMPATIBLE (v5) que genera un informe de sistema en un archivo JSON.
-# Corrige el parsing de los slots de RAM para máxima compatibilidad.
+# Script UNIVERSAL y COMPATIBLE (v7) que genera un informe de sistema en un archivo JSON.
+# Agrega Part Number, Serial Number y Rank a los detalles de la RAM.
 # Requiere 'jq'. Uso: sudo ./info_notebooks.sh
 
 if [ "$EUID" -ne 0 ]; then
@@ -51,56 +51,42 @@ fi
 
 disk_usage_root=$(df -P / | tail -n 1 | awk '{print $5}')
 storage_info=$(lsblk -b -J -o NAME,TYPE,SIZE,MODEL)
-
 ram_line=$(free -b | grep "^Mem:")
 ram_total_gib=$(echo "$ram_line" | awk '{printf "%.2f", $2/1073741824}')
 ram_used_gib=$(echo "$ram_line" | awk '{printf "%.2f", $3/1073741824}')
 ram_available_gib=$(echo "$ram_line" | awk '{printf "%.2f", $7/1073741824}')
-
 swap_line=$(free -b | grep "^Swap:")
 swap_total_gib=$(echo "$swap_line" | awk '{printf "%.2f", $2/1073741824}')
 swap_used_gib=$(echo "$swap_line" | awk '{printf "%.2f", $3/1073741824}')
 swap_free_gib=$(echo "$swap_line" | awk '{printf "%.2f", $4/1073741824}')
-
 max_capacity=$(dmidecode -t memory | grep "Maximum Capacity" | awk -F': ' '{print $2}')
 total_slots=$(dmidecode -t memory | grep "Number Of Devices" | awk -F': ' '{print $2}')
 
-# --- Lógica de Hardware de RAM (Método v5, más robusto) ---
-ram_slots_json="["
-# Obtenemos los "handles" o identificadores únicos de cada dispositivo de memoria instalado
-handles=$(dmidecode -t memory | grep -A2 "Memory Device" | grep "Handle" | awk '{print $2}' | sed 's/,//')
-first_slot=true
-for handle in $handles; do
-    # Extraemos el bloque de texto que corresponde solo a ese dispositivo
-    device_info=$(dmidecode -t memory | awk -v handle="$handle" '
-        BEGIN {RS="Memory Device"; FS="\n"} 
-        $0 ~ "Handle " handle {print "Memory Device" $0}'
-    )
-    # Si el bloque no contiene un módulo, lo saltamos
-    if echo "$device_info" | grep -q "Size: No Module Installed"; then
-        continue
-    fi
-    # Extraemos cada campo de forma independiente del bloque
-    locator=$(echo "$device_info" | grep "Locator:" | awk -F': ' '{print $2}')
-    size=$(echo "$device_info" | grep "Size:" | awk -F': ' '{print $2}')
-    type=$(echo "$device_info" | grep "Type:" | awk -F': ' '{print $2}')
-    speed=$(echo "$device_info" | grep "Speed:" | awk -F': ' '{print $2}')
-    
-    if ! $first_slot; then
-        ram_slots_json+=","
-    fi
-    first_slot=false
-    ram_slots_json+=$(jq -n \
-                      --arg locator "$locator" \
-                      --arg size "$size" \
-                      --arg type "$type" \
-                      --arg speed "$speed" \
-                      '{locator: $locator, size: $size, type: $type, speed: $speed}')
-done
-ram_slots_json+="]"
+# --- Lógica de Hardware de RAM (v7, con campos extendidos) ---
+ram_slots_json=$(dmidecode -t memory | awk '
+    BEGIN { printf "[" ; first=1 }
+    /Memory Device/ { in_device=1; locator=size=type=speed=serial=part_number=rank="" }
+    in_device && /^\s+Locator:/ { locator=$0; sub(/^\s+Locator: /, "", locator) }
+    in_device && /^\s+Size:/ { size=$0; sub(/^\s+Size: /, "", size) }
+    in_device && /^\s+Type:/ { type=$0; sub(/^\s+Type: /, "", type) }
+    in_device && /^\s+Speed:/ { speed=$0; sub(/^\s+Speed: /, "", speed) }
+    in_device && /^\s+Serial Number:/ { serial=$0; sub(/^\s+Serial Number: /, "", serial) }
+    in_device && /^\s+Part Number:/ { part_number=$0; sub(/^\s+Part Number: /, "", part_number) }
+    in_device && /^\s+Rank:/ { rank=$0; sub(/^\s+Rank: /, "", rank) }
+    /^$/ {
+        if (in_device && size != "" && size !~ /No Module Installed/) {
+            if (!first) { printf "," }; first=0
+            gsub(/"/, "\\\"", locator); gsub(/"/, "\\\"", size); gsub(/"/, "\\\"", type); 
+            gsub(/"/, "\\\"", speed); gsub(/"/, "\\\"", serial); gsub(/"/, "\\\"", part_number);
+            gsub(/"/, "\\\"", rank);
+            printf "{\"locator\":\"%s\",\"size\":\"%s\",\"type\":\"%s\",\"speed\":\"%s\",\"part_number\":\"%s\",\"serial_number\":\"%s\",\"rank\":\"%s\"}", locator, size, type, speed, part_number, serial, rank
+        }
+        in_device=0
+    }
+    END { printf "]" }
+')
 
-installed_ram_sizes=$(echo "$ram_slots_json" | jq -r '.[].size' | sed 's/ GB//g' | awk '{print $1}' | sort -u)
-unique_size_count=$(echo "$installed_ram_sizes" | wc -l)
+unique_size_count=$(echo "$ram_slots_json" | jq -r '.[].size' | grep -v "^\s*$" | sort -u | wc -l)
 is_asymmetric=false
 if [ "$unique_size_count" -gt 1 ]; then
   is_asymmetric=true
@@ -131,39 +117,14 @@ jq -n \
   --argjson slots "$ram_slots_json" \
   '{
     "report_timestamp": (now | todate),
-    "system_info": {
-      "model": $model,
-      "serial_number": $sn
-    },
-    "performance": {
-      "uptime": $uptime,
-      "load_average": {
-        "1_min": ($la1 | tonumber),
-        "5_min": ($la5 | tonumber),
-        "15_min": ($la15 | tonumber)
-      },
-      "temperature_alert": $temp_alert
-    },
-    "cpu": {
-      "model": $cpu_model,
-      "threads": ($cpu_threads | tonumber)
-    },
-    "storage": {
-      "physical_devices": $storage.blockdevices,
-      "root_filesystem_usage": $disk_usage
-    },
+    "system_info": { "model": $model, "serial_number": $sn },
+    "performance": { "uptime": $uptime, "load_average": { "1_min": ($la1 | tonumber), "5_min": ($la5 | tonumber), "15_min": ($la15 | tonumber) }, "temperature_alert": $temp_alert },
+    "cpu": { "model": $cpu_model, "threads": ($cpu_threads | tonumber) },
+    "storage": { "physical_devices": $storage.blockdevices, "root_filesystem_usage": $disk_usage },
     "memory": {
       "usage": {
-        "ram_gib": {
-          "total": ($ram_total | tonumber),
-          "used": ($ram_used | tonumber),
-          "available": ($ram_avail | tonumber)
-        },
-        "swap_gib": {
-          "total": ($swap_total | tonumber),
-          "used": ($swap_used | tonumber),
-          "free": ($swap_free | tonumber)
-        }
+        "ram_gib": { "total": ($ram_total | tonumber), "used": ($ram_used | tonumber), "available": ($ram_avail | tonumber) },
+        "swap_gib": { "total": ($swap_total | tonumber), "used": ($swap_used | tonumber), "free": ($swap_free | tonumber) }
       },
       "hardware": {
         "max_capacity_supported": $max_mem,
