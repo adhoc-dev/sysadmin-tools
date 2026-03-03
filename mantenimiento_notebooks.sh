@@ -88,6 +88,52 @@ __update_repos() {
     apt-get update | tee "$UPDATE_LOG"
 }
 
+# Función: Verificar e instalar Adhoc CLI (adhoccli) y dependencias/repositorios necesarios
+__ensure_adhoccli() {
+    echo -e "${green}#############################################"
+    echo "# Verificando instalación de Adhoc CLI (ad) #"
+    echo "#############################################${normal}"
+
+    if command -v ad >/dev/null 2>&1; then
+        echo -e "${green}Adhoc CLI ya está instalado. No se requiere acción.${normal}"
+        return
+    fi
+
+    echo -e "${yellow}Adhoc CLI no está instalado. Preparando dependencias y repositorios...${normal}"
+
+    apt-get install -y ca-certificates curl gnupg wget | tee -a "$UPDATE_LOG"
+
+    install -d -m 0755 /usr/share/keyrings
+
+    if [ ! -f /usr/share/keyrings/cloud.google.gpg ]; then
+        curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+            | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
+    fi
+    echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" \
+        > /etc/apt/sources.list.d/google-cloud-sdk.list
+
+    if [ ! -f /usr/share/keyrings/adhoc-devops.gpg ]; then
+        wget -qO - https://apt.dev-adhoc.com/adhoc-devops.asc \
+            | gpg --dearmor -o /usr/share/keyrings/adhoc-devops.gpg
+    fi
+    echo "deb [signed-by=/usr/share/keyrings/adhoc-devops.gpg] https://apt.dev-adhoc.com/ stable main" \
+        > /etc/apt/sources.list.d/adhoc.list
+
+    apt-get update | tee -a "$UPDATE_LOG"
+
+    if ! command -v gcloud >/dev/null 2>&1; then
+        apt-get install -y google-cloud-cli | tee -a "$UPDATE_LOG"
+    fi
+
+    apt-get install -y adhoccli | tee -a "$UPDATE_LOG"
+
+    if command -v ad >/dev/null 2>&1; then
+        echo -e "${green}Adhoc CLI instalado correctamente.${normal}"
+    else
+        echo -e "${red}No se pudo verificar la instalación de Adhoc CLI.${normal}"
+    fi
+}
+
 # Función: Actualizar sistema y paquetes
 __upgrade_system() {
     echo -e "${green}####################################"
@@ -258,6 +304,7 @@ __check_root
 __display_header
 __check_token
 __update_repos
+__ensure_adhoccli
 __upgrade_system
 __clean_system
 __show_update_log
