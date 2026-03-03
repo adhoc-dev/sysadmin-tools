@@ -95,11 +95,15 @@ __ensure_adhoccli() {
     echo "#############################################${normal}"
 
     if command -v ad >/dev/null 2>&1; then
-        echo -e "${green}Adhoc CLI ya está instalado. No se requiere acción.${normal}"
-        return
+        CURRENT_AD_PATH="$(command -v ad)"
+        echo -e "${green}Se detectó Adhoc CLI en:${normal} $CURRENT_AD_PATH"
+        if [[ "$CURRENT_AD_PATH" == "/usr/local/bin/ad" ]]; then
+            echo -e "${yellow}Advertencia: 'ad' está resolviendo a /usr/local/bin/ad (posible instalación manual antigua).${normal}"
+            echo -e "${yellow}Se intentará instalar/actualizar el paquete 'adhoccli' desde APT igualmente.${normal}"
+        fi
+    else
+        echo -e "${yellow}Adhoc CLI no está instalado. Preparando dependencias y repositorios...${normal}"
     fi
-
-    echo -e "${yellow}Adhoc CLI no está instalado. Preparando dependencias y repositorios...${normal}"
 
     apt-get install -y ca-certificates curl gnupg wget | tee -a "$UPDATE_LOG"
 
@@ -125,10 +129,17 @@ __ensure_adhoccli() {
         apt-get install -y google-cloud-cli | tee -a "$UPDATE_LOG"
     fi
 
+    apt-get install -y --only-upgrade adhoccli | tee -a "$UPDATE_LOG" || true
     apt-get install -y adhoccli | tee -a "$UPDATE_LOG"
 
     if command -v ad >/dev/null 2>&1; then
-        echo -e "${green}Adhoc CLI instalado correctamente.${normal}"
+        UPDATED_AD_PATH="$(command -v ad)"
+        echo -e "${green}Adhoc CLI verificado. Ruta actual:${normal} $UPDATED_AD_PATH"
+
+        if [[ "$UPDATED_AD_PATH" == "/usr/local/bin/ad" ]]; then
+            echo -e "${yellow}Atención: sigue priorizándose /usr/local/bin/ad.${normal}"
+            echo -e "${yellow}Para usar la versión de APT, remover binario manual viejo:${normal} sudo rm -f /usr/local/bin/ad"
+        fi
     else
         echo -e "${red}No se pudo verificar la instalación de Adhoc CLI.${normal}"
     fi
@@ -141,7 +152,11 @@ __upgrade_system() {
     echo "####################################${normal}"
     apt-get upgrade -y | tee -a "$UPDATE_LOG"
     apt-get install unattended-upgrades -y | tee -a "$UPDATE_LOG"
-    snap refresh | tee -a "$UPDATE_LOG"
+    if command -v snap >/dev/null 2>&1; then
+        snap refresh | tee -a "$UPDATE_LOG"
+    else
+        echo "snap no está instalado; se omite 'snap refresh'." | tee -a "$UPDATE_LOG"
+    fi
     apt-get install -y screenfetch dmidecode cowsay
 }
 
@@ -244,6 +259,21 @@ __display_evidence() {
                 echo "Ejecutaste como root directo. Para ver adhoccli, corré el script con sudo desde tu usuario normal."
             else
                 echo "adhoccli está instalado, pero no devolvió información visible de versión."
+            fi
+        fi
+
+        ADHOCCLI_APT_VERSION="$(dpkg-query -W -f='${Version}' adhoccli 2>/dev/null || true)"
+        if [ -n "$ADHOCCLI_APT_VERSION" ]; then
+            echo -e " ${red}${bold}adhoccli (APT):${normal} $ADHOCCLI_APT_VERSION"
+        fi
+
+        ADHOCCLI_RUNNING_VERSION="$(echo "$ADHOCCLI_VERSION" | sed -nE 's/.*([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' | head -n 1 || true)"
+        ADHOCCLI_APT_VERSION_SHORT="$(echo "$ADHOCCLI_APT_VERSION" | sed -nE 's/^([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' | head -n 1 || true)"
+
+        if [ -n "$ADHOCCLI_RUNNING_VERSION" ] && [ -n "$ADHOCCLI_APT_VERSION_SHORT" ] && [ "$ADHOCCLI_RUNNING_VERSION" != "$ADHOCCLI_APT_VERSION_SHORT" ]; then
+            echo -e " ${yellow}${bold}⚠ versión en ejecución distinta a versión APT (${ADHOCCLI_RUNNING_VERSION} vs ${ADHOCCLI_APT_VERSION_SHORT}).${normal}"
+            if [[ "$ADHOCCLI_PATH" == "/usr/local/bin/ad" ]]; then
+                echo -e " ${yellow}Posible causa: binario manual en /usr/local/bin/ad tiene prioridad en PATH.${normal}"
             fi
         fi
     else
