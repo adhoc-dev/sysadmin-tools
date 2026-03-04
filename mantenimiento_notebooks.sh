@@ -224,18 +224,46 @@ __show_update_log() {
 
 # Función: Mostrar evidencias de ejecución del script
 __display_evidence() {
-    echo "Fecha: $(date)"
-    echo "Host: $(hostname)"
-    echo "Uptime del sistema: $(uptime -p)"
-    echo "Serial del sistema:"
+    echo -e "${red}${bold}Fecha:${normal} $(date)"
+    echo -e "${red}${bold}Host:${normal} $(hostname)"
+    echo -e "${red}${bold}Uptime del sistema:${normal} $(uptime -p)"
+    echo -e "${red}${bold}Serial del sistema:${normal}"
     dmidecode -t system | grep -i 'Serial' 2>/dev/null || true
-    echo "Información del sistema:"
-    screenfetch -n | egrep 'OS:|Disk:|CPU:|RAM:' || true
+    echo -e "${red}${bold}Información del sistema:${normal}"
+
+    OS_INFO="$(grep -E '^PRETTY_NAME=' /etc/os-release 2>/dev/null | cut -d'=' -f2- | tr -d '"' || true)"
+    DISK_INFO="$(df -h / | awk 'NR==2 {print $3 " / " $2 " (" $5 ")"}' || true)"
+    CPU_INFO="$(lscpu | awk -F': *' '/Model name:/ {print $2; exit}' || true)"
+
+    printf " OS: %s\n" "${OS_INFO:-N/D}"
+    printf " Disk: %s\n" "${DISK_INFO:-N/D}"
+    printf " CPU: %s\n" "${CPU_INFO:-N/D}"
+
+    RAM_LINE_H="$(free -h | awk '/^Mem:/ {print $3 " / " $2; exit}' || true)"
+    RAM_PERCENT="$(free -b | awk '/^Mem:/ {if ($2 > 0) printf "%.1f", ($3/$2)*100; else print "0.0"; exit}' || true)"
+
+    SWAP_LINE_H="$(free -h | awk '/^Swap:/ {print $3 " / " $2; exit}' || true)"
+    SWAP_PERCENT="$(free -b | awk '/^Swap:/ {if ($2 > 0) printf "%.1f", ($3/$2)*100; else print "0.0"; exit}' || true)"
+
+    read -r CPU_TOTAL_1 CPU_IDLE_1 < <(awk '/^cpu / {idle=$5+$6; total=0; for(i=2;i<=NF;i++) total+=$i; print total, idle; exit}' /proc/stat)
+    sleep 1
+    read -r CPU_TOTAL_2 CPU_IDLE_2 < <(awk '/^cpu / {idle=$5+$6; total=0; for(i=2;i<=NF;i++) total+=$i; print total, idle; exit}' /proc/stat)
+    CPU_DELTA_TOTAL=$((CPU_TOTAL_2 - CPU_TOTAL_1))
+    CPU_DELTA_IDLE=$((CPU_IDLE_2 - CPU_IDLE_1))
+    if [ "$CPU_DELTA_TOTAL" -gt 0 ]; then
+        CPU_USAGE_PERCENT="$(awk -v dt="$CPU_DELTA_TOTAL" -v di="$CPU_DELTA_IDLE" 'BEGIN {printf "%.1f", ((dt-di)*100)/dt}')"
+    else
+        CPU_USAGE_PERCENT="N/D"
+    fi
+
+    printf " RAM: %s (%s%%)\n" "${RAM_LINE_H:-N/D}" "${RAM_PERCENT:-N/D}"
+    printf " SWAP: %s (%s%%)\n" "${SWAP_LINE_H:-N/D}" "${SWAP_PERCENT:-N/D}"
+    printf " CPU en uso: %s%%\n" "${CPU_USAGE_PERCENT:-N/D}"
     # Verificar adhoccli (comando: ad) y su versión
-    echo "Adhoc CLI (adhoccli):"
+    echo -e "${red}${bold}Adhoc CLI (adhoccli):${normal}"
     if command -v ad >/dev/null 2>&1; then
         ADHOCCLI_PATH="$(command -v ad)"
-        echo -e " ${red}${bold}Ruta:${normal} $ADHOCCLI_PATH"
+        echo " Ruta: $ADHOCCLI_PATH"
 
         AD_CMD=(ad)
         if [ "$EUID" -eq 0 ] && [ -n "${SUDO_USER:-}" ] && [ "${SUDO_USER:-}" != "root" ]; then
@@ -250,7 +278,7 @@ __display_evidence() {
         if [ -n "$ADHOCCLI_VERSION" ]; then
             if echo "$ADHOCCLI_VERSION" | grep -qi '^Adhoc Cli v:'; then
                 ADHOCCLI_VERSION_VALUE="${ADHOCCLI_VERSION#*: }"
-                echo -e " ${red}${bold}Adhoc Cli v:${normal} $ADHOCCLI_VERSION_VALUE"
+                echo " Adhoc Cli v: $ADHOCCLI_VERSION_VALUE"
             else
                 echo " $ADHOCCLI_VERSION"
             fi
@@ -264,7 +292,7 @@ __display_evidence() {
 
         ADHOCCLI_APT_VERSION="$(dpkg-query -W -f='${Version}' adhoccli 2>/dev/null || true)"
         if [ -n "$ADHOCCLI_APT_VERSION" ]; then
-            echo -e " ${red}${bold}adhoccli (APT):${normal} $ADHOCCLI_APT_VERSION"
+            echo " adhoccli (APT): $ADHOCCLI_APT_VERSION"
         fi
 
         ADHOCCLI_RUNNING_VERSION="$(echo "$ADHOCCLI_VERSION" | sed -nE 's/.*([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' | head -n 1 || true)"
@@ -280,11 +308,11 @@ __display_evidence() {
         echo "adhoccli no está instalado (comando 'ad' no encontrado)."
     fi
     # Mostrar el perfil de energía actual si powerprofilesctl está instalado
+    echo -e "${red}${bold}Perfil de energía actual:${normal}"
     if command -v powerprofilesctl >/dev/null 2>&1; then
-        echo "Perfil de energía actual:"
         POWER_PROFILE="$(powerprofilesctl get 2>/dev/null | head -n 1 || true)"
         if [ -n "$POWER_PROFILE" ]; then
-            echo -e " ${red}${bold}$POWER_PROFILE${normal}"
+            echo " $POWER_PROFILE"
         else
             echo " no disponible"
         fi
@@ -292,7 +320,7 @@ __display_evidence() {
         echo "powerprofilesctl no está disponible."
     fi
     # Mostrar estado y capacidad de las baterías
-    echo "Estado y capacidad de las baterías:"
+    echo -e "${red}${bold}Estado y capacidad de las baterías:${normal}"
     BATTERY_LIST="$(upower -e | grep battery | grep -v hidpp || true)"
     if [ -z "$BATTERY_LIST" ]; then
         echo "Batería: no detectada"
@@ -306,24 +334,24 @@ __display_evidence() {
         printf "    percentage:          %s\n" "${BAT_PERCENTAGE:-N/D}"
     done <<< "$BATTERY_LIST"
 
-    echo "Resumen rápido:"
+    echo -e "${red}${bold}Resumen rápido:${normal}"
     ROOT_USED="$(df -h / | awk 'NR==2 {print $5}')"
     ROOT_USED_NUM="${ROOT_USED%\%}"
     if [ -n "$ROOT_USED_NUM" ] && [ "$ROOT_USED_NUM" -ge 90 ]; then
-        ROOT_STATUS="${red}${bold}❌ crítico${normal}"
+        ROOT_STATUS="crítico"
     elif [ -n "$ROOT_USED_NUM" ] && [ "$ROOT_USED_NUM" -ge 80 ]; then
-        ROOT_STATUS="${yellow}${bold}⚠️ atención${normal}"
+        ROOT_STATUS="atención"
     else
-        ROOT_STATUS="${green}${bold}✅ ok${normal}"
+        ROOT_STATUS="ok"
     fi
 
-    REBOOT_STATUS="${green}${bold}✅ no${normal}"
+    REBOOT_STATUS="no"
     if [ -f /var/run/reboot-required ]; then
-        REBOOT_STATUS="${yellow}${bold}⚠️ sí${normal}"
+        REBOOT_STATUS="sí"
     fi
 
-    printf "  Disco raíz:            %s (%b)\n" "${ROOT_USED:-N/D}" "$ROOT_STATUS"
-    printf "  Reinicio pendiente:    %b\n" "$REBOOT_STATUS"
+    printf "  Disco raíz:            %s (%s)\n" "${ROOT_USED:-N/D}" "$ROOT_STATUS"
+    printf "  Reinicio pendiente:    %s\n" "$REBOOT_STATUS"
     printf "  Adhoc CLI detectada:   %s\n" "$(command -v ad >/dev/null 2>&1 && echo sí || echo no)"
 
 }
